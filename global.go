@@ -12,7 +12,7 @@ Options:
     -r, --requests       execute number of all requests. (default: 1)
     -R, --repetitions    number of times to run the testing. (default: 1)
     -t, --time           testing execute time. (unit: seconds)
-    -T, --content-type   set Content-Type in request
+    -f, --file           file have request what need params.
     -v, --http-version   set http-version. (default: HTTP/1.1)
 
     -V, --Version        stlmz version

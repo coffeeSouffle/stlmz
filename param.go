@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
-	// cli "github.com/codegangsta/cli"
+	"io/ioutil"
+	"log"
+	"net/url"
 	"os"
 )
 
@@ -13,10 +16,13 @@ type Params struct {
 	time       int // testing time, 30 mean 30seconds
 	reps       int // number of times to run the testing
 
-	contentType string
+	user        string
+	method      string
 	httpVersion string
-	urlFile     string
-	postFile    string
+	url         string
+	param       url.Values
+	file        string
+	header      map[string]string
 }
 
 func (p *Params) ParseCommandLine() {
@@ -31,15 +37,48 @@ func (p *Params) ParseCommandLine() {
 	fs.IntVar(&p.time, "time", 0, "execute testing time (seconds)")
 	fs.IntVar(&p.reps, "R", 1, "execute times")
 	fs.IntVar(&p.reps, "repetitions", 1, "execute times")
-	fs.StringVar(&p.contentType, "T", "", "set Content-Type in request")
-	fs.StringVar(&p.contentType, "content-type", "", "set Content-Type in request")
+	fs.StringVar(&p.file, "f", "", "file have request what need params")
+	fs.StringVar(&p.file, "file", "", "file have request what need params")
 	fs.StringVar(&p.httpVersion, "v", "", "set http version")
 	fs.StringVar(&p.httpVersion, "http-version", "", "set http version")
 	fs.Parse(os.Args[1:])
 
 	p.checkParams()
 
-	fmt.Println(fs.Args())
+	args := fs.Args()
+	p.method = args[0]
+	p.url = args[1]
+
+	if p.file != "" {
+		var dat map[string]map[string]string
+		fptr, err := ioutil.ReadFile(p.file)
+		if err != nil {
+			howtoUseFile(err)
+		}
+
+		if err := json.Unmarshal(fptr, &dat); err != nil {
+			howtoUseFile(err)
+		}
+
+		fmt.Println(dat)
+		p.parseJson(dat)
+	}
+}
+
+func (p *Params) parseJson(data map[string]map[string]string) {
+	pm := url.Values{}
+	for k, v := range data {
+		// fmt.Println(v)
+		switch k {
+		case "header":
+			p.header = v
+		case "param":
+			for key, val := range v {
+				pm.Add(key, val)
+			}
+			p.param = pm
+		}
+	}
 }
 
 func (p *Params) checkParams() {
@@ -79,6 +118,12 @@ func GetVersion() {
 
 func howtoUse() {
 	fmt.Println(HelpInfo)
+	os.Exit(2)
+}
+
+// TODO 作提示
+func howtoUseFile(i error) {
+	log.Fatal("file error: ", i)
 	os.Exit(2)
 }
 
