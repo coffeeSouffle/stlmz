@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 )
 
 type Params struct {
@@ -46,6 +48,10 @@ func (p *Params) ParseCommandLine() {
 	p.checkParams()
 
 	args := fs.Args()
+	if len(args) < 2 {
+		howtoUse()
+	}
+
 	p.method = args[0]
 	p.url = args[1]
 
@@ -63,6 +69,8 @@ func (p *Params) ParseCommandLine() {
 		fmt.Println(dat)
 		p.parseJson(dat)
 	}
+
+	go p.SetRequest()
 }
 
 func (p *Params) parseJson(data map[string]map[string]string) {
@@ -83,6 +91,10 @@ func (p *Params) parseJson(data map[string]map[string]string) {
 
 func (p *Params) checkParams() {
 	if p.concurrent == 0 {
+		howtoUse()
+	}
+
+	if p.request < p.concurrent {
 		howtoUse()
 	}
 
@@ -109,6 +121,32 @@ func (p *Params) parseHelpCmd() {
 			GetVersion()
 		}
 	}
+}
+
+func (p *Params) SetRequest() {
+	requestflag <- true
+	for i := 0; i < p.request; i++ {
+		req, err := http.NewRequest(p.method, p.url, nil)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(2)
+		}
+
+		if len(p.header) > 0 {
+			for k, v := range p.header {
+				req.Header.Add(k, v)
+			}
+		}
+
+		if p.method == "POST" {
+			req.Header.Add("Content-Length", strconv.Itoa(len(p.param.Encode())))
+		}
+
+		if req != nil {
+			request <- req
+		}
+	}
+	fmt.Println(len(request))
 }
 
 func GetVersion() {
